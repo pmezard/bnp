@@ -600,17 +600,14 @@ func extractFileValues(files []string) error {
 	return nil
 }
 
-func parseBnp(args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("path to PDF document expected")
-	}
-	return extractFileValues(args)
-}
+var (
+	parseCmd   = app.Command("parse", "parse BNP Paribas PDF reports")
+	parseFiles = parseCmd.Arg("files", "PDF files to parse").Strings()
+)
 
-func main() {
-	err := parseBnp(os.Args[1:])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %s\n", err)
-		os.Exit(1)
+func parseFn() error {
+	if len(*parseFiles) < 1 {
+		return fmt.Errorf("no PDF file specified")
 	}
+	return extractFileValues(*parseFiles)
 }
