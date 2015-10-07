@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"compress/flate"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -566,16 +567,17 @@ func convertOpsToValues(ops []*Op) ([]Value, error) {
 	return values, nil
 }
 
-func extractFileValues(files []string) error {
+func extractFileValues(files []string) ([]Value, error) {
 	failed := 0
 	fail := func(fn string, err error) {
 		fmt.Fprintf(os.Stderr, "error: %s: %s\n", fn, err)
 		failed += 1
 	}
+	allValues := []Value{}
 	for _, file := range files {
 		r, err := pdf.Open(file)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		ops, err := extractPDFOps(r)
 		if err != nil {
@@ -593,21 +595,46 @@ func extractFileValues(files []string) error {
 			l := v.Value % 100
 			fmt.Printf("%s - %6d.%02d - %s\n", d, h, l, v.Source)
 		}
+		allValues = append(allValues, values...)
 	}
 	if failed > 0 {
-		return fmt.Errorf("%d reports failed\n", failed)
+		return nil, fmt.Errorf("%d reports failed\n", failed)
 	}
-	return nil
+	return allValues, nil
+}
+
+func writeJsonValues(values []Value, path string) error {
+	fp, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	err = json.NewEncoder(fp).Encode(values)
+	err2 := fp.Close()
+	if err != nil {
+		return err
+	}
+	return err2
 }
 
 var (
 	parseCmd   = app.Command("parse", "parse BNP Paribas PDF reports")
 	parseFiles = parseCmd.Arg("files", "PDF files to parse").Strings()
+	parseJson  = parseCmd.Flag("json", "path to JSON output file").String()
 )
 
 func parseFn() error {
 	if len(*parseFiles) < 1 {
 		return fmt.Errorf("no PDF file specified")
 	}
-	return extractFileValues(*parseFiles)
+	values, err := extractFileValues(*parseFiles)
+	if err != nil {
+		return err
+	}
+	if *parseJson != "" {
+		err = writeJsonValues(values, *parseJson)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
