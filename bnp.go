@@ -16,6 +16,8 @@ func dispatch() error {
 	switch cmd {
 	case parseCmd.FullCommand():
 		return parseFn()
+	case webCmd.FullCommand():
+		return webFn()
 	}
 	return nil
 }
