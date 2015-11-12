@@ -589,11 +589,25 @@ func extractFileValues(files []string) ([]Value, error) {
 			fail(file, err)
 			continue
 		}
+		prev := int64(-1)
 		for _, v := range values {
 			d := v.Date.Format("2006-01-02")
 			h := v.Value / 100
 			l := v.Value % 100
-			fmt.Printf("%s - %6d.%02d - %s\n", d, h, l, v.Source)
+			dh := 0
+			dl := 0
+			if prev >= 0 {
+				delta := int(v.Value - prev)
+				if delta > 0 {
+					dh = delta / 100
+					dl = delta % 100
+				} else {
+					dh = -((-delta) / 100)
+					dl = (-delta) % 100
+				}
+			}
+			prev = v.Value
+			fmt.Printf("%s - %6d.%02d / %4d.%02d - %s\n", d, h, l, dh, dl, v.Source)
 		}
 		allValues = append(allValues, values...)
 	}
